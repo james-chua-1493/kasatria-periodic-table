@@ -99,8 +99,10 @@
 
 		<div id="info"><a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> css3d - periodic table.</div>
 		<div id="container"></div>
-		<div id="menu">
+		<div id="login-container">
 			<button id="signin">SIGN IN WITH GOOGLE</button>
+		</div>
+		<div id="menu" style="display: none;">  <!-- Hidden on load -->
 			<button id="table">TABLE</button>
 			<button id="sphere">SPHERE</button>
 			<button id="helix">HELIX</button>
@@ -169,13 +171,14 @@
 
 					const data = await res.json();
 					const elements = parseSheetData( data.values );
-					console.log( 'Elements count:', elements.length ); 
-					console.log( 'First element:', elements[ 0 ] );
 					
 					// Build the 3D scene when data has arrives, instead of on page load —
 					// init() no longer runs until the user has signed in and their Sheet data is ready
 					init( elements );
 					animate();
+
+					document.getElementById('login-container').style.display = 'none';
+        			document.getElementById('menu').style.display = 'block';
 				} 
 			}); 
 
