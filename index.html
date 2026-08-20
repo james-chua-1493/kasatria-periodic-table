@@ -155,32 +155,66 @@
 				return 'rgba(200,0,0,0.6)'; // Red 
 			}
 
+			// 1. Grab the sign-in button so we can update its text later
+			const signinButton = document.getElementById('signin');
+
+			// 2. Update the click listener to show a loading state
+			signinButton.addEventListener('click', () => { 
+				signinButton.innerText = 'LOADING...';
+				signinButton.style.pointerEvents = 'none'; // Prevents double-clicking while waiting
+				tokenClient.requestAccessToken(); 
+			});
+
 			// Requests a Sheets-scoped access token, fetches the live data, and
 			// (for now) logs it — this will later replace the hardcoded `table` array
 			const tokenClient = google.accounts.oauth2.initTokenClient({ 
 				client_id: CLIENT_ID, 
 				scope: 'https://www.googleapis.com/auth/spreadsheets.readonly', 
 				callback: async (tokenResponse) => { 
-
-					const accessToken = tokenResponse.access_token; 
-					const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${encodeURIComponent(RANGE)}`;
-
-					const res = await fetch(url, { 
-						headers: { Authorization: `Bearer ${accessToken}` } 
-					});
-
-					const data = await res.json();
-					const elements = parseSheetData( data.values );
 					
-					// Build the 3D scene when data has arrives, instead of on page load —
-					// init() no longer runs until the user has signed in and their Sheet data is ready
-					init( elements );
-					animate();
+					try { 
+						
+						const accessToken = tokenResponse.access_token; 
+						const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${encodeURIComponent(RANGE)}`;
 
-					document.getElementById('login-container').style.display = 'none';
-        			document.getElementById('menu').style.display = 'block';
+						const res = await fetch(url, { 
+							headers: { Authorization: `Bearer ${accessToken}` } 
+						});
+
+						// Catch bad HTTP responses (e.g., 403 Forbidden or 404 Not Found)
+						if (!res.ok) {
+							throw new Error(`HTTP error! status: ${res.status}`);
+						}
+
+						const data = await res.json();
+						
+						// Catch specific Google API errors hidden inside a valid response
+						if (data.error) {
+							throw new Error(data.error.message); 
+						}
+
+						const elements = parseSheetData( data.values );
+						
+						// Build the scene
+						init( elements );
+						animate();
+
+						// Swap the UI
+						document.getElementById('login-container').style.display = 'none';
+						document.getElementById('menu').style.display = 'block';
+						
+					} catch (error) { 
+						
+						// Log the actual error for developers debugging the console
+						console.error("Failed to fetch Google Sheet data:", error);
+						
+						// Revert the button so the user knows it failed and can try again
+						signinButton.innerText = 'ERROR: TRY AGAIN';
+						signinButton.style.pointerEvents = 'auto'; 
+						
+					}
 				} 
-			}); 
+			});
 
 			document.getElementById('signin').addEventListener('click', () => { 
 				tokenClient.requestAccessToken(); 
